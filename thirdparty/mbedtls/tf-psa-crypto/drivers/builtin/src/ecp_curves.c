@@ -16,6 +16,8 @@
 
 #include "constant_time_internal.h"
 
+#include "constant_time_internal.h"
+
 #include "bn_mul.h"
 #include "bignum_core.h"
 #include "ecp_invasive.h"
