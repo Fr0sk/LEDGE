@@ -216,6 +216,14 @@ GDScriptFunction *GDScriptByteCodeGenerator::write_end() {
 #endif
 	append_opcode(GDScriptFunction::OPCODE_END);
 
+#ifdef DEBUG_ENABLED
+	for (GDScriptFunction::InlineCall& call : function->inline_calls) {
+		if (call.result_temporary >= 0) {
+			call.result_address = call.result_temporary + max_locals + GDScriptFunction::FIXED_ADDRESSES_MAX;
+		}
+	}
+#endif
+
 	for (int i = 0; i < temporaries.size(); i++) {
 		int stack_index = i + max_locals + GDScriptFunction::FIXED_ADDRESSES_MAX;
 		for (int j = 0; j < temporaries[i].bytecode_indices.size(); j++) {
@@ -1140,6 +1148,27 @@ void GDScriptByteCodeGenerator::write_assign_default_parameter(const Address &p_
 		write_assign(p_dst, p_src);
 	}
 	function->default_arguments.push_back(opcodes.size());
+}
+
+void GDScriptByteCodeGenerator::write_check_typed_array_arg(const Address& p_dst, const Address& p_src, const GDScriptDataType& p_element_type) {
+	append_opcode(GDScriptFunction::OPCODE_CHECK_TYPED_ARRAY_ARG);
+	append(p_src);
+	append(get_constant_pos(p_element_type.script_type) | (GDScriptFunction::ADDR_TYPE_CONSTANT << GDScriptFunction::ADDR_BITS));
+	append(p_dst);
+	append(p_element_type.builtin_type);
+	append(p_element_type.native_type);
+}
+
+void GDScriptByteCodeGenerator::write_check_typed_dictionary_arg(const Address& p_dst, const Address& p_src, const GDScriptDataType& p_key_type, const GDScriptDataType& p_value_type) {
+	append_opcode(GDScriptFunction::OPCODE_CHECK_TYPED_DICTIONARY_ARG);
+	append(p_src);
+	append(get_constant_pos(p_key_type.script_type) | (GDScriptFunction::ADDR_TYPE_CONSTANT << GDScriptFunction::ADDR_BITS));
+	append(get_constant_pos(p_value_type.script_type) | (GDScriptFunction::ADDR_TYPE_CONSTANT << GDScriptFunction::ADDR_BITS));
+	append(p_dst);
+	append(p_key_type.builtin_type);
+	append(p_key_type.native_type);
+	append(p_value_type.builtin_type);
+	append(p_value_type.native_type);
 }
 
 void GDScriptByteCodeGenerator::write_store_global(const Address &p_dst, int p_global_index) {
@@ -2081,13 +2110,41 @@ void GDScriptByteCodeGenerator::end_inline_call() {
 		patch_jump(E);
 	}
 
-	///welcome back, sneaky lil piece of shit, you still need to be popped the off
+	///welcome back, sneaky lil piece of shit, you still need to be popped off
 	if (frame.had_hidden_result_temp) {
 		used_temporaries.push_back(frame.hidden_result_temp);
 	}
 
 	current_inline_returns_to_patch.pop_back();
 }
+
+#ifdef DEBUG_ENABLED
+void GDScriptByteCodeGenerator::begin_inline_call_debug(const Address& p_result_target, const GDScriptDataType& p_return_type, const StringName& p_function_name, const String& p_source, int p_call_line) {
+	GDScriptFunction::InlineCall call;
+	call.start = opcodes.size();
+	call.call_line = p_call_line;
+	if (p_result_target.mode == Address::TEMPORARY) {
+		call.result_temporary = p_result_target.address;
+	} else {
+		call.result_address = address_of(p_result_target);
+	}
+	call.return_type = p_return_type;
+	call.function_name = p_function_name;
+	call.source = p_source;
+	function->inline_calls.push_back(call);
+	current_inline_call_debug.push_back(function->inline_calls.size() - 1);
+}
+
+void GDScriptByteCodeGenerator::end_inline_call_arguments_debug() {
+	function->inline_calls.write[current_inline_call_debug.back()->get()].argument_end = opcodes.size();
+}
+
+void GDScriptByteCodeGenerator::end_inline_call_debug() {
+	GDScriptFunction::InlineCall& call = function->inline_calls.write[current_inline_call_debug.back()->get()];
+	call.end = opcodes.size();
+	current_inline_call_debug.pop_back();
+}
+#endif
 
 void GDScriptByteCodeGenerator::write_assert(const Address &p_test, const Address &p_message) {
 	append_opcode(GDScriptFunction::OPCODE_ASSERT);

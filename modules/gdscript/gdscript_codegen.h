@@ -122,6 +122,9 @@ public:
 	virtual void write_assign_true(const Address &p_target) = 0;
 	virtual void write_assign_false(const Address &p_target) = 0;
 	virtual void write_assign_default_parameter(const Address &dst, const Address &src, bool p_use_conversion) = 0;
+	///
+	virtual void write_check_typed_array_arg(const Address& p_dst, const Address& p_src, const GDScriptDataType& p_element_type) = 0;
+	virtual void write_check_typed_dictionary_arg(const Address& p_dst, const Address& p_src, const GDScriptDataType& p_key_type, const GDScriptDataType& p_value_type) = 0;
 	virtual void write_store_global(const Address &p_dst, int p_global_index) = 0;
 	virtual void write_store_named_global(const Address &p_dst, const StringName &p_global) = 0;
 	virtual void write_cast(const Address &p_target, const Address &p_source, const GDScriptDataType &p_type) = 0;
@@ -171,6 +174,13 @@ public:
 	///must only be called while an inline call frame is active!
 	virtual void write_inline_return(const Address& p_return_value, bool p_use_conversion) = 0;
 	virtual void end_inline_call() = 0;
+
+#ifdef DEBUG_ENABLED
+	///needed to maintain error recovery semantics from upstream. a sad life that we have to live in
+	virtual void begin_inline_call_debug(const Address &p_result_target, const GDScriptDataType &p_return_type, const StringName &p_function_name, const String &p_source, int p_call_line) = 0;
+	virtual void end_inline_call_arguments_debug() = 0;
+	virtual void end_inline_call_debug() = 0;
+#endif
 
 	virtual ~GDScriptCodeGenerator() {}
 };

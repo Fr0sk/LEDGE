@@ -168,6 +168,10 @@ class GDScriptByteCodeGenerator : public GDScriptCodeGenerator {
 	};
 	List<InlineReturnFrame> current_inline_returns_to_patch;
 
+#ifdef DEBUG_ENABLED
+	List<int> current_inline_call_debug;
+#endif
+
 	void add_stack_identifier(const StringName &p_id, int p_stackpos) {
 		if (locals.size() > max_locals) {
 			max_locals = locals.size();
@@ -542,6 +546,9 @@ public:
 	virtual void write_assign_true(const Address &p_target) override;
 	virtual void write_assign_false(const Address &p_target) override;
 	virtual void write_assign_default_parameter(const Address &p_dst, const Address &p_src, bool p_use_conversion) override;
+	///
+	virtual void write_check_typed_array_arg(const Address& p_dst, const Address& p_src, const GDScriptDataType& p_element_type) override;
+	virtual void write_check_typed_dictionary_arg(const Address& p_dst, const Address& p_src, const GDScriptDataType& p_key_type, const GDScriptDataType& p_value_type) override;
 	virtual void write_store_global(const Address &p_dst, int p_global_index) override;
 	virtual void write_store_named_global(const Address &p_dst, const StringName &p_global) override;
 	virtual void write_cast(const Address &p_target, const Address &p_source, const GDScriptDataType &p_type) override;
@@ -589,6 +596,12 @@ public:
 	virtual void start_inline_call(const Address& p_result_target) override;
 	virtual void write_inline_return(const Address& p_return_value, bool p_use_conversion) override;
 	virtual void end_inline_call() override;
+
+#ifdef DEBUG_ENABLED
+	virtual void begin_inline_call_debug(const Address& p_result_target, const GDScriptDataType& p_return_type, const StringName& p_function_name, const String& p_source, int p_call_line) override;
+	virtual void end_inline_call_arguments_debug() override;
+	virtual void end_inline_call_debug() override;
+#endif
 	virtual void write_assert(const Address &p_test, const Address &p_message) override;
 
 	void write_set_member_validated(const Address& p_value, const MethodBind* p_setter, int p_index);

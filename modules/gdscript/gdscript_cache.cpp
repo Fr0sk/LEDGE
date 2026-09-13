@@ -547,7 +547,7 @@ void GDScriptCache::ensure_global_impls_scanned() {
 
 	for (const String& path : trait_paths) {
 		Error err = OK;
-		Ref<GDScript> script = get_full_script(path, err);
+		Ref<GDScript> script = get_full_script(path, err, String(), /*p_update_from_disk=*/true);
 	}
 
 	MutexLock lock(singleton->mutex);

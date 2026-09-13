@@ -2311,6 +2311,11 @@ const GDScriptParser::FunctionNode* GDScriptCompiler::_get_inline_candidate(Code
 	if (candidate->is_coroutine) {
 		return nullptr;
 	}
+	for (const GDScriptParser::ParameterNode* parameter : candidate->parameters) {
+		if (parameter->type_constraint.is_variant()) {
+			return nullptr;
+		}
+	}
 
 	if (!_no_reachable_subclass_overrides(defining_class->fqcn, p_function_name)) {
 		return nullptr;
@@ -2346,6 +2351,9 @@ Error GDScriptCompiler::_emit_inline_call(CodeGen& codegen, const GDScriptParser
 	DEV_ASSERT(p_target->identifier != nullptr);
 	const GDScriptDataType callee_return_type = _gdtype_from_datatype(p_target->return_type_constraint, codegen.script);
 	gen->start_inline_call(p_result);
+#ifdef DEBUG_ENABLED
+	gen->begin_inline_call_debug(p_result, callee_return_type, p_target->identifier->name, codegen.script->get_script_path(), p_call_site_line);
+#endif
 	codegen.start_block();
 
 	///NOTE:!!! SSR doesn't run post inlining for now!!!
@@ -2367,13 +2375,24 @@ Error GDScriptCompiler::_emit_inline_call(CodeGen& codegen, const GDScriptParser
 		const GDScriptParser::ParameterNode* param = p_target->parameters[i];
 		GDScriptDataType param_type = _gdtype_from_datatype(param->type_constraint, codegen.script);
 		GDScriptCodeGenerator::Address local = codegen.add_local(param->identifier->name, param_type);
-		gen->write_assign_with_conversion(local, p_arguments[i]);
+		if (param_type.kind == GDScriptDataType::BUILTIN && param_type.builtin_type == Variant::ARRAY && param_type.has_container_element_type(0)) {
+			gen->write_check_typed_array_arg(local, p_arguments[i], param_type.get_container_element_type(0));
+		} else if (param_type.kind == GDScriptDataType::BUILTIN && param_type.builtin_type == Variant::DICTIONARY && param_type.has_container_element_types()) {
+			gen->write_check_typed_dictionary_arg(local, p_arguments[i], param_type.get_container_element_type_or_variant(0), param_type.get_container_element_type_or_variant(1));
+		} else {
+			gen->write_assign_with_conversion(local, p_arguments[i]);
+		}
 	}
-	
+
+#ifdef DEBUG_ENABLED
+	gen->end_inline_call_arguments_debug();
+#endif
+
 	for (uint32_t i = (uint32_t)p_arguments.size(); i < p_target->parameters.size(); i++) {
 		const GDScriptParser::ParameterNode* param = p_target->parameters[i];
 		GDScriptDataType param_type = _gdtype_from_datatype(param->type_constraint, codegen.script);
 		GDScriptCodeGenerator::Address local = codegen.add_local(param->identifier->name, param_type);
+		gen->write_newline(param->initializer->start_line);
 		GDScriptCodeGenerator::Address default_value = _parse_expression(codegen, err, param->initializer);
 		if (err) {
 			codegen.function_node = saved_function_node;
@@ -2400,6 +2419,10 @@ Error GDScriptCompiler::_emit_inline_call(CodeGen& codegen, const GDScriptParser
 
 	codegen.end_block();
 	gen->end_inline_call();
+#ifdef DEBUG_ENABLED
+	gen->end_inline_call_debug();
+#endif
+	gen->write_newline(p_call_site_line);
 
 	return OK;
 }
