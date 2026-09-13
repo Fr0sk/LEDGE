@@ -2042,6 +2042,53 @@ void GDScriptByteCodeGenerator::write_return(const Address &p_return_value, bool
 	}
 }
 
+void GDScriptByteCodeGenerator::start_inline_call(const Address& p_result_target) {
+	InlineReturnFrame frame;
+	frame.target = p_result_target;
+
+	if (p_result_target.mode == Address::TEMPORARY) {
+		List<int>::Element* E = used_temporaries.back();
+		while (E) {
+			if (E->get() == (int)p_result_target.address) {
+				frame.had_hidden_result_temp = true;
+				frame.hidden_result_temp = E->get();
+				used_temporaries.erase(E);
+				break;
+			}
+			E = E->prev();
+		}
+	}
+
+	current_inline_returns_to_patch.push_back(frame);
+}
+
+void GDScriptByteCodeGenerator::write_inline_return(const Address& p_return_value, bool p_use_conversion) {
+	if (p_use_conversion) {
+		write_assign_with_conversion(current_inline_returns_to_patch.back()->get().target, p_return_value);
+	} else {
+		write_assign(current_inline_returns_to_patch.back()->get().target, p_return_value);
+	}
+
+	append_opcode(GDScriptFunction::OPCODE_JUMP);
+	current_inline_returns_to_patch.back()->get().jumps_to_patch.push_back(opcodes.size());
+	append(0);
+}
+
+void GDScriptByteCodeGenerator::end_inline_call() {
+	InlineReturnFrame& frame = current_inline_returns_to_patch.back()->get();
+
+	for (const int& E : frame.jumps_to_patch) {
+		patch_jump(E);
+	}
+
+	///welcome back, sneaky lil piece of shit, you still need to be popped the off
+	if (frame.had_hidden_result_temp) {
+		used_temporaries.push_back(frame.hidden_result_temp);
+	}
+
+	current_inline_returns_to_patch.pop_back();
+}
+
 void GDScriptByteCodeGenerator::write_assert(const Address &p_test, const Address &p_message) {
 	append_opcode(GDScriptFunction::OPCODE_ASSERT);
 	append(p_test);

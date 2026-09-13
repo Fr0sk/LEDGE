@@ -73,6 +73,7 @@ public:
 	virtual void pop_temporary() = 0;
 	virtual void clear_temporaries() = 0;
 	virtual void clear_address(const Address &p_address) = 0;
+	virtual int get_current_ip() const = 0;
 	virtual bool is_local_dirty(const Address &p_address) const = 0;
 	virtual void clear_dirty(const Address& p_address) = 0;
 
@@ -164,6 +165,12 @@ public:
 	virtual void write_newline(int p_line) = 0;
 	virtual void write_return(const Address &p_return_value, bool p_use_conversion) = 0;
 	virtual void write_assert(const Address &p_test, const Address &p_message) = 0;
+
+
+	virtual void start_inline_call(const Address& p_result_target) = 0;
+	///must only be called while an inline call frame is active!
+	virtual void write_inline_return(const Address& p_return_value, bool p_use_conversion) = 0;
+	virtual void end_inline_call() = 0;
 
 	virtual ~GDScriptCodeGenerator() {}
 };

@@ -82,6 +82,7 @@ class GDScriptByteCodeGenerator : public GDScriptCodeGenerator {
 	List<RBMap<StringName, int>> stack_id_stack;
 	RBMap<StringName, int> stack_identifiers;
 	List<int> stack_identifiers_counts;
+	List<int> used_temporaries_counts;
 	RBMap<StringName, int> local_constants;
 
 	Vector<StackSlot> locals;
@@ -156,6 +157,17 @@ class GDScriptByteCodeGenerator : public GDScriptCodeGenerator {
 
 	List<List<int>> current_breaks_to_patch;
 
+	struct InlineReturnFrame {
+		Address target;
+		List<int> jumps_to_patch;
+
+		///used so a temporary that was preallocated isn't visible to used temporaries
+		///while the callee is being compiled
+		bool had_hidden_result_temp = false;
+		int hidden_result_temp = -1;
+	};
+	List<InlineReturnFrame> current_inline_returns_to_patch;
+
 	void add_stack_identifier(const StringName &p_id, int p_stackpos) {
 		if (locals.size() > max_locals) {
 			max_locals = locals.size();
@@ -174,6 +186,7 @@ class GDScriptByteCodeGenerator : public GDScriptCodeGenerator {
 
 	void push_stack_identifiers() {
 		stack_identifiers_counts.push_back(locals.size());
+		used_temporaries_counts.push_back(used_temporaries.size());
 		stack_id_stack.push_back(stack_identifiers);
 		if (GDScriptLanguage::get_singleton()->should_track_locals()) {
 			RBMap<StringName, int> block_ids(block_identifiers);
@@ -185,11 +198,13 @@ class GDScriptByteCodeGenerator : public GDScriptCodeGenerator {
 	void pop_stack_identifiers() {
 		int current_locals = stack_identifiers_counts.back()->get();
 		stack_identifiers_counts.pop_back();
+		int temps_at_block_open = used_temporaries_counts.back()->get();
+		used_temporaries_counts.pop_back();
 		stack_identifiers = stack_id_stack.back()->get();
 		stack_id_stack.pop_back();
 #ifdef DEBUG_ENABLED
-		if (!used_temporaries.is_empty()) {
-			ERR_PRINT("Leaving block with non-zero temporary variables: " + itos(used_temporaries.size()));
+		if (used_temporaries.size() > (size_t)temps_at_block_open) {
+			ERR_PRINT("Leaving block with non-zero temporary variables: " + itos(used_temporaries.size() - temps_at_block_open));
 		}
 #endif
 		for (int i = current_locals; i < locals.size(); i++) {
@@ -474,6 +489,7 @@ public:
 	virtual void clear_temporaries() override;
 	virtual void clear_address(const Address &p_address) override;
 	virtual bool is_local_dirty(const Address &p_address) const override;
+	virtual int get_current_ip() const override { return opcodes.size(); }
 
 	virtual void start_parameters() override;
 	virtual void end_parameters() override;
@@ -485,6 +501,9 @@ public:
 	virtual GDScriptFunction *write_end() override;
 
 	uint32_t reuse_local_slot(const StringName& p_name, const GDScriptDataType& p_type, uint32_t p_existing_stack_pos);
+	///exists so try_reuse_slot from the optimiser can reject freed slots whose
+	///address a sibling scope end has since resized locals
+	uint32_t get_locals_top() const { return (uint32_t)locals.size() + GDScriptFunction::FIXED_ADDRESSES_MAX; }
 	void clear_dirty(const Address& p_address) override;
 
 #ifdef DEBUG_ENABLED
@@ -566,6 +585,10 @@ public:
 	virtual void write_breakpoint() override;
 	virtual void write_newline(int p_line) override;
 	virtual void write_return(const Address &p_return_value, bool p_use_conversion) override;
+
+	virtual void start_inline_call(const Address& p_result_target) override;
+	virtual void write_inline_return(const Address& p_return_value, bool p_use_conversion) override;
+	virtual void end_inline_call() override;
 	virtual void write_assert(const Address &p_test, const Address &p_message) override;
 
 	void write_set_member_validated(const Address& p_value, const MethodBind* p_setter, int p_index);
