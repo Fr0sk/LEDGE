@@ -2308,7 +2308,7 @@ const GDScriptParser::FunctionNode* GDScriptCompiler::_get_inline_candidate(Code
 	if (p_is_static_call != candidate->is_static) {
 		return nullptr;
 	}
-	if (candidate->is_coroutine) {
+	if (candidate->is_coroutine || candidate->is_vararg()) {
 		return nullptr;
 	}
 	for (const GDScriptParser::ParameterNode* parameter : candidate->parameters) {

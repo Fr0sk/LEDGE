@@ -3655,29 +3655,53 @@ Variant GDScriptFunction::call(GDScriptInstance *p_instance, const Variant **p_a
 			GD_ERR_BREAK(native_type_idx < 0 || native_type_idx >= _global_names_count);
 			const StringName& native_type = _global_names_ptr[native_type_idx];
 
+			bool converted_packed_array = false;
 			if (src->get_type() != Variant::ARRAY) {
+				switch (src->get_type()) {
+					case Variant::PACKED_BYTE_ARRAY:
+					case Variant::PACKED_INT32_ARRAY:
+					case Variant::PACKED_INT64_ARRAY:
+					case Variant::PACKED_FLOAT32_ARRAY:
+					case Variant::PACKED_FLOAT64_ARRAY:
+					case Variant::PACKED_STRING_ARRAY:
+					case Variant::PACKED_VECTOR2_ARRAY:
+					case Variant::PACKED_VECTOR3_ARRAY:
+					case Variant::PACKED_COLOR_ARRAY:
+					case Variant::PACKED_VECTOR4_ARRAY: {
+						Array converted = *src;
+						*dst = Array(converted, builtin_type, native_type, *script_type);
+						converted_packed_array = true;
+					} break;
+					default:
+						break;
+				}
+
+				if (converted_packed_array) {
+					ip += 6;
+				} else {
 #ifdef DEBUG_ENABLED
-				err_text = vformat(R"(Invalid type in function '%s'. Cannot convert argument 1 from %s to Array.)",
-						_get_inline_call_error_function_desc(ip, &stack[ADDR_STACK_SELF]), Variant::get_type_name(src->get_type()));
+					err_text = vformat(R"(Invalid type in function '%s'. Cannot convert argument 1 from %s to Array.)",
+							_get_inline_call_error_function_desc(ip, &stack[ADDR_STACK_SELF]), Variant::get_type_name(src->get_type()));
 #endif
-				OPCODE_BREAK;
-			}
+					OPCODE_BREAK;
+				}
+			} else {
+				Array *array = VariantInternal::get_array(src);
+				bool types_match = array->get_typed_builtin() == ((uint32_t)builtin_type) &&
+						array->get_typed_class_name() == native_type &&
+						array->get_typed_script() == *script_type;
 
-			Array *array = VariantInternal::get_array(src);
-			bool types_match = array->get_typed_builtin() == ((uint32_t)builtin_type) &&
-					array->get_typed_class_name() == native_type &&
-					array->get_typed_script() == *script_type;
-
-			if (!types_match) {
+				if (!types_match) {
 #ifdef DEBUG_ENABLED
-				err_text = vformat(R"(Invalid type in function '%s'. The array of argument 1 (%s) does not have the same element type as the expected typed array argument.)",
-						_get_inline_call_error_function_desc(ip, &stack[ADDR_STACK_SELF]), _get_var_type(src));
+					err_text = vformat(R"(Invalid type in function '%s'. The array of argument 1 (%s) does not have the same element type as the expected typed array argument.)",
+							_get_inline_call_error_function_desc(ip, &stack[ADDR_STACK_SELF]), _get_var_type(src));
 #endif
-				OPCODE_BREAK;
-			}
+					OPCODE_BREAK;
+				}
 
-			*dst = *src;
-			ip += 6;
+				*dst = *src;
+				ip += 6;
+			}
 		}
 		DISPATCH_OPCODE;
 
