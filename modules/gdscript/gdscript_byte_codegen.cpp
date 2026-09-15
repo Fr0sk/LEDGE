@@ -2081,6 +2081,13 @@ void GDScriptByteCodeGenerator::start_inline_call(const Address& p_result_target
 			if (E->get() == (int)p_result_target.address) {
 				frame.had_hidden_result_temp = true;
 				frame.hidden_result_temp = E->get();
+
+				///remember where the temps and their neighbours were
+				List<int>::Element* next = E->next();
+				if (next != nullptr) {
+					frame.had_next_neighbor = true;
+					frame.next_neighbor_temp = next->get();
+				}
 				used_temporaries.erase(E);
 				break;
 			}
@@ -2112,7 +2119,24 @@ void GDScriptByteCodeGenerator::end_inline_call() {
 
 	///welcome back, sneaky lil piece of shit, you still need to be popped off
 	if (frame.had_hidden_result_temp) {
-		used_temporaries.push_back(frame.hidden_result_temp);
+		if (frame.had_next_neighbor) {
+			///find the neighbor that was originally right after this slot, and reinsert
+			///immediately before it to restore the original position this temp was in
+			List<int>::Element* neighbor = nullptr;
+			for (List<int>::Element* it = used_temporaries.front(); it; it = it->next()) {
+				if (it->get() == frame.next_neighbor_temp) {
+					neighbor = it;
+					break;
+				}
+			}
+			if (neighbor != nullptr) {
+				used_temporaries.insert_before(neighbor, frame.hidden_result_temp);
+			} else {
+				used_temporaries.push_back(frame.hidden_result_temp);
+			}
+		} else {
+			used_temporaries.push_back(frame.hidden_result_temp);
+		}
 	}
 
 	current_inline_returns_to_patch.pop_back();

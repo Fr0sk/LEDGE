@@ -165,6 +165,8 @@ class GDScriptByteCodeGenerator : public GDScriptCodeGenerator {
 		///while the callee is being compiled
 		bool had_hidden_result_temp = false;
 		int hidden_result_temp = -1;
+		bool had_next_neighbor = false;
+		int next_neighbor_temp = -1;
 	};
 	List<InlineReturnFrame> current_inline_returns_to_patch;
 
