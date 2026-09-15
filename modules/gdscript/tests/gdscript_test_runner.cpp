@@ -49,6 +49,8 @@
 #include "core/os/os.h"
 #include "core/string/string_builder.h"
 #include "scene/resources/packed_scene.h"
+#include "servers/audio/audio_driver_dummy.h"
+#include "servers/audio/audio_server.h"
 #include "servers/physics_3d/physics_server_3d.h"
 #include "servers/physics_3d/physics_server_3d_manager.h"
 #include "tests/test_macros.h"
@@ -149,6 +151,14 @@ void init_language(const String &p_base_path) {
 		} else {
 			print_line("FAILED to create default PhysicsServer3D!!! AAAAAA");
 		}
+	}
+
+	if (AudioServer::get_singleton() == nullptr) {
+		int dummy_driver_index = AudioDriverManager::get_driver_count();
+		AudioDriverManager::add_driver(memnew(AudioDriverDummy));
+		AudioDriverManager::initialize(dummy_driver_index);
+		AudioServer* audio_server = memnew(AudioServer);
+		audio_server->init();
 	}
 
 	// Initialize the language for the test routine.

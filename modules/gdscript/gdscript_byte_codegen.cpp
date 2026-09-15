@@ -2099,10 +2099,12 @@ void GDScriptByteCodeGenerator::start_inline_call(const Address& p_result_target
 }
 
 void GDScriptByteCodeGenerator::write_inline_return(const Address& p_return_value, bool p_use_conversion) {
-	if (p_use_conversion) {
-		write_assign_with_conversion(current_inline_returns_to_patch.back()->get().target, p_return_value);
-	} else {
-		write_assign(current_inline_returns_to_patch.back()->get().target, p_return_value);
+	if (current_inline_returns_to_patch.back()->get().target.mode != Address::NIL) {
+		if (p_use_conversion) {
+			write_assign_with_conversion(current_inline_returns_to_patch.back()->get().target, p_return_value);
+		} else {
+			write_assign(current_inline_returns_to_patch.back()->get().target, p_return_value);
+		}
 	}
 
 	append_opcode(GDScriptFunction::OPCODE_JUMP);
