@@ -373,6 +373,7 @@ private:
 	friend class GDScriptCompiler;
 	friend class GDScriptByteCodeGenerator;
 	friend class GDScriptLanguage;
+	friend class GDScriptOptimiser;
 
 	StringName name;
 	StringName source;

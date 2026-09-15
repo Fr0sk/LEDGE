@@ -32,6 +32,7 @@
 /// Licensed under the MIT License, same terms as the Godot engine.
 
 #include "gdscript_optimiser.h"
+#include "core/config/project_settings.h"
 
 uint64_t GDScriptOptimiser::_generation_counter = 0;
 
@@ -52,8 +53,21 @@ void GDScriptOptimiser::record_use(HashMap<const GDScriptParser::Node*, VarLifet
 	}
 }
 
+///chokepoint for the entire SSR (stack slot reuse) feature! disabled by default for now:
+///it can hand out a slot that's still live in an enclosing expression when an inlined
+///call's result must survive a sibling inlined call
 GDScriptOptimiser::SlotDecision GDScriptOptimiser::try_reuse_slot(SiblingSlotPool& r_pool, int p_current_ip, bool p_eligible_for_reuse, uint32_t p_stack_floor, uint32_t p_locals_ceiling) {
 	SlotDecision decision;
+
+	static bool ssr_enabled_cached = false;
+	static bool ssr_enabled_resolved = false;
+	if (!ssr_enabled_resolved) {
+		ssr_enabled_cached = GLOBAL_DEF("gdscript/debug/enable_stack_slot_reuse", false);
+		ssr_enabled_resolved = true;
+	}
+	if (!ssr_enabled_cached) {
+		return decision;
+	}
 
 	if (!p_eligible_for_reuse) {
 		return decision;

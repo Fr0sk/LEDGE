@@ -1088,7 +1088,7 @@ void GDScriptFunction::disassemble(const Vector<String> &p_code_lines) const {
 					if (i > 0) {
 						text += ", ";
 					}
-					text += DADDR(1 + i);
+					text += DADDR(2 + i);
 				}
 				text += ")";
 

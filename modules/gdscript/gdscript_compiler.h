@@ -148,6 +148,18 @@ class GDScriptCompiler {
 			locals_stack.pop_back();
 			generator->end_block();
 		}
+
+		List<HashMap<StringName, GDScriptCodeGenerator::Address>> parameters_stack;
+
+		void push_inline_parameters() {
+			parameters_stack.push_back(parameters);
+			parameters.clear();
+		}
+
+		void pop_inline_parameters() {
+			parameters = parameters_stack.back()->get();
+			parameters_stack.pop_back();
+		}
 	};
 
 	bool _is_class_member_property(CodeGen &codegen, const StringName &p_name);

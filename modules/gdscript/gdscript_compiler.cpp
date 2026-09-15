@@ -2370,6 +2370,7 @@ Error GDScriptCompiler::_emit_inline_call(CodeGen& codegen, const GDScriptParser
 
 	codegen.inline_call_stack.push_back(p_target);
 	codegen.inline_call_depth++;
+	codegen.push_inline_parameters();
 
 	for (uint32_t i = 0; i < p_target->parameters.size() && i < (uint32_t)p_arguments.size(); i++) {
 		const GDScriptParser::ParameterNode* param = p_target->parameters[i];
@@ -2398,6 +2399,7 @@ Error GDScriptCompiler::_emit_inline_call(CodeGen& codegen, const GDScriptParser
 			codegen.function_node = saved_function_node;
 			codegen.inline_call_depth--;
 			codegen.inline_call_stack.resize(codegen.inline_call_stack.size() - 1);
+			codegen.pop_inline_parameters();
 			return err;
 		}
 		gen->write_assign_with_conversion(local, default_value);
@@ -2412,6 +2414,7 @@ Error GDScriptCompiler::_emit_inline_call(CodeGen& codegen, const GDScriptParser
 	codegen.function_node = saved_function_node;
 	codegen.inline_call_depth--;
 	codegen.inline_call_stack.resize(codegen.inline_call_stack.size() - 1);
+	codegen.pop_inline_parameters();
 
 	if (err) {
 		return err;
@@ -2835,7 +2838,7 @@ Error GDScriptCompiler::_parse_block(CodeGen &codegen, const GDScriptParser::Sui
 	return OK;
 }
 
-GDScriptFunction *GDScriptCompiler::_parse_function(Error &r_error, GDScript *p_script, const GDScriptParser::ClassNode *p_class, const GDScriptParser::FunctionNode *p_func, bool p_for_ready, bool p_for_lambda, bool p_func_is_native_impl_method, const LocalVector<const GDScriptParser::FunctionNode *> *p_enclosing_inline_stack, int p_enclosing_inline_budget_used) {
+GDScriptFunction *GDScriptCompiler::_parse_function(Error &r_error, GDScript *p_script, const GDScriptParser::ClassNode *p_class, const GDScriptParser::FunctionNode *p_func, bool p_for_ready, bool p_for_lambda, bool p_func_is_native_impl_method, const LocalVector<const GDScriptParser::FunctionNode*>* p_enclosing_inline_stack, int p_enclosing_inline_budget_used) {
 	r_error = OK;
 	CodeGen codegen;
 	codegen.generator = memnew(GDScriptByteCodeGenerator);
