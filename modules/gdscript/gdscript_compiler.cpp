@@ -2263,7 +2263,7 @@ const GDScriptParser::FunctionNode* GDScriptCompiler::_get_inline_candidate(Code
 	static bool inlining_enabled_cached = false;
 	static bool inlining_enabled_resolved = false;
 	if (!inlining_enabled_resolved) {
-		inlining_enabled_cached = GLOBAL_DEF("gdscript/debug/enable_inlining", true);
+		inlining_enabled_cached = GLOBAL_DEF("reginleif/optimisations/enable_inlining", true);
 		inlining_enabled_resolved = true;
 	}
 	if (!inlining_enabled_cached) {
