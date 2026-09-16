@@ -1172,7 +1172,8 @@ GDScriptCodeGenerator::Address GDScriptCompiler::_parse_expression(CodeGen &code
 			} else if (test_type.has_type()) {
 				gen->write_type_test(result, operand, test_type);
 			} else {
-				gen->write_assign_true(result);
+				ERR_PRINT("[Reginleif] Compiler bug, please report: `is` check compiled with no resolved type (defaulting to false, NOT true).");
+				gen->write_assign_false(result);
 			}
 
 			if (operand.mode == GDScriptCodeGenerator::Address::TEMPORARY) {
@@ -3680,29 +3681,25 @@ Error GDScriptCompiler::_compile_class(GDScript *p_script, const GDScriptParser:
 		}
 
 		if (!is_native_impl_target && impl_node->trait_name != nullptr) {
-			String trait_path = GDScriptCache::get_global_trait_path(impl_node->trait_name->name);
-			if (!trait_path.is_empty()) {
-				GDScriptParser trait_parser;
-				GDScriptAnalyzer trait_analyzer(&trait_parser);
-				trait_parser.parse(GDScriptCache::get_source_code(trait_path), trait_path, false);
-				trait_analyzer.analyze();
-				const GDScriptParser::TraitNode* trait = trait_parser.get_trait_tree();
-				if (trait != nullptr) {
-					for (const KeyValue<StringName, Ref<GDScriptTraitSignatureSnapshot>>& E : impl_node->resolved_gd_impl->provided_signatures) {
-						if (explicit_impl_methods.has(E.key)) {
-							continue;
-						}
-						for (const GDScriptParser::FunctionNode* default_method_node : trait->default_methods) {
-							if (default_method_node == nullptr || default_method_node->identifier == nullptr || default_method_node->identifier->name != E.key) {
-								continue;
-							}
-							Error err = OK;
-							_parse_function(err, p_script, p_class, default_method_node, false, false, false);
-							if (err) {
-								return err;
-							}
-							break;
-						}
+			Error trait_err = OK;
+			Ref<GDScriptTrait> gd_trait = GDScriptCache::get_cached_trait(
+					GDScriptCache::get_global_trait_path(impl_node->trait_name->name),
+					impl_node->trait_name->name,
+					trait_err,
+					parser->get_script_path());
+			if (trait_err == OK && gd_trait.is_valid()) {
+				for (const KeyValue<StringName, Ref<GDScriptTraitSignatureSnapshot>>& E : impl_node->resolved_gd_impl->provided_signatures) {
+					if (explicit_impl_methods.has(E.key)) {
+						continue;
+					}
+					GDScriptParser::FunctionNode* const* default_method_node = gd_trait->default_methods.getptr(E.key);
+					if (default_method_node == nullptr) {
+						continue;
+					}
+					Error err = OK;
+					_parse_function(err, p_script, p_class, *default_method_node, false, false, false);
+					if (err) {
+						return err;
 					}
 				}
 			}

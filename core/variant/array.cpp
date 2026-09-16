@@ -900,8 +900,8 @@ void Array::set_typed_nested(const ContainerTypeValidate& p_type) {
     ERR_FAIL_COND_MSG(_p->read_only, "Array is in read-only state.");
     ERR_FAIL_COND_MSG(_p->array.size() > 0, "Type can only be set when array is empty.");
     ERR_FAIL_COND_MSG(_p->refcount.get() > 1, "Type can only be set when array has no more than one user.");
-    ERR_FAIL_COND_MSG(_p->typed.type != Variant::NIL, "Type can only be set once.");
-    ERR_FAIL_COND_MSG(p_type.class_name != StringName() && p_type.type != Variant::OBJECT, "Class names can only be set for type OBJECT");
+    ERR_FAIL_COND_MSG(_p->typed.variant_type != Variant::NIL, "Type can only be set once.");
+    ERR_FAIL_COND_MSG(p_type.class_name != StringName() && p_type.variant_type != Variant::OBJECT, "Class names can only be set for type OBJECT");
     Ref<Script> script = p_type.script;
     ERR_FAIL_COND_MSG(script.is_valid() && p_type.class_name == StringName(), "Script class can only be set together with base class name");
 
