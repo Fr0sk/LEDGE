@@ -124,7 +124,6 @@ Error GDScriptTraitAnalyzer::resolve_trait(GDScriptParser::TraitNode* p_trait) {
 			continue;
 		}
 		analyzer->resolve_function_signature(method, p_trait);
-		analyzer->resolve_function_body(method);
 		gd_trait->default_methods[method->identifier->name] = method;
 
 		gd_trait->required_signatures[method->identifier->name] = _make_trait_method_signature_snapshot(method);
@@ -301,6 +300,17 @@ Error GDScriptTraitAnalyzer::resolve_impl(GDScriptParser::ImplNode* p_impl) {
 			gd_impl->provided_methods[E.key] = E.value;
 			if (trait->required_signatures.has(E.key)) {
 				gd_impl->provided_signatures[E.key] = trait->required_signatures[E.key];
+			}
+
+			if (E.value != nullptr) {
+				///force this guard open. since the node is shared across every impl of this trait
+				GDScriptParser::DataType previous_impl_self_type = analyzer->current_impl_self_type;
+				analyzer->current_impl_self_type = target_type;
+				analyzer->current_impl_self_type.is_meta_type = false;
+				analyzer->current_impl_self_type.is_constant = false;
+				E.value->resolved_body = false;
+				analyzer->resolve_function_body(E.value);
+				analyzer->current_impl_self_type = previous_impl_self_type;
 			}
 		}
 	}

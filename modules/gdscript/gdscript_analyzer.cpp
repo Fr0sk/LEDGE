@@ -4983,7 +4983,7 @@ void GDScriptAnalyzer::reduce_call(GDScriptParser::CallNode *p_call, bool p_is_a
 			push_error("Cannot use `super()` inside a lambda.", p_call);
 		}
 	} else if (callee_type == GDScriptParser::Node::IDENTIFIER) {
-		base_type = parser->current_class->self_type;
+		base_type = current_impl_self_type.is_set() ? current_impl_self_type : parser->current_class->self_type;
 		base_type.is_meta_type = false;
 		is_self = true;
 	} else if (callee_type == GDScriptParser::Node::SUBSCRIPT) {

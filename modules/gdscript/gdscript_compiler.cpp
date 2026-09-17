@@ -1171,9 +1171,11 @@ GDScriptCodeGenerator::Address GDScriptCompiler::_parse_expression(CodeGen &code
 				gen->write_trait_test(result, operand, type_test->trait_test_name);
 			} else if (test_type.has_type()) {
 				gen->write_type_test(result, operand, test_type);
-			} else {
+			} else if (!type_test->test_datatype.is_set()) {
 				ERR_PRINT("[Reginleif] Compiler bug, please report: `is` check compiled with no resolved type (defaulting to false, NOT true).");
 				gen->write_assign_false(result);
+			} else {
+				gen->write_assign_true(result);
 			}
 
 			if (operand.mode == GDScriptCodeGenerator::Address::TEMPORARY) {
@@ -3697,9 +3699,26 @@ Error GDScriptCompiler::_compile_class(GDScript *p_script, const GDScriptParser:
 						continue;
 					}
 					Error err = OK;
-					_parse_function(err, p_script, p_class, *default_method_node, false, false, false);
+					GDScriptFunction* impl_function = _parse_function(err, p_script, p_class, *default_method_node, false, false, is_native_impl_target);
 					if (err) {
 						return err;
+					}
+
+					if (is_builtin_target) {
+						impl_function->set_is_native_impl_method(true);
+						StringName mangled_key = StringName("@impl:builtin:" + itos((int)impl_target.builtin_type) + "::" + String(E.key));
+						p_script->member_functions[mangled_key] = impl_function;
+						GDScriptLanguage::get_singleton()->register_native_impl_method(impl_target.builtin_type, E.key, impl_function);
+					} else if (is_enum_target) {
+						impl_function->set_is_native_impl_method(true);
+						StringName mangled_key = StringName("@impl:enum:" + String(impl_target.native_type) + "::" + String(E.key));
+						p_script->member_functions[mangled_key] = impl_function;
+						GDScriptLanguage::get_singleton()->register_enum_impl_method(impl_target.native_type, E.key, impl_function);
+					} else if (is_native_class_target) {
+						impl_function->set_is_native_impl_method(true);
+						StringName mangled_key = StringName("@impl:native:" + String(impl_target.native_type) + "::" + String(E.key));
+						p_script->member_functions[mangled_key] = impl_function;
+						GDScriptLanguage::get_singleton()->register_native_class_impl_method(impl_target.native_type, E.key, impl_function);
 					}
 				}
 			}
