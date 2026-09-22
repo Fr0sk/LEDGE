@@ -17,8 +17,6 @@
 
 #include <string.h>
 
-#include "chacha20_internal.h"
-
 #include "mbedtls/platform.h"
 
 #define CHACHAPOLY_STATE_INIT       (0)

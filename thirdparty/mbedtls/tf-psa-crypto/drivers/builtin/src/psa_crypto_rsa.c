@@ -26,7 +26,6 @@
 #include <mbedtls/private/rsa.h>
 #include <mbedtls/private/error_common.h>
 #include "rsa_internal.h"
-#include "constant_time_internal.h"
 
 #if defined(MBEDTLS_PSA_BUILTIN_ALG_RSA_PKCS1V15_CRYPT) || \
     defined(MBEDTLS_PSA_BUILTIN_ALG_RSA_OAEP) || \

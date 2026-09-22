@@ -22,8 +22,6 @@
 #include <stddef.h>
 #include <string.h>
 
-#include "chacha20_internal.h"
-
 #include "mbedtls/platform.h"
 
 #define CHACHA20_CTR_INDEX (12U)

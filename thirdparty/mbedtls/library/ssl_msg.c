@@ -3134,9 +3134,6 @@ int mbedtls_ssl_prepare_handshake_record(mbedtls_ssl_context *ssl)
                                       ssl->in_hsfraglen, ssl->in_hslen));
             ssl->in_hdr = payload_end;
             ssl->in_msglen = 0;
-            if (mbedtls_ssl_set_in_hsfraglen(ssl, in_hsfraglen) != 0) {
-                return MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
-            }
             mbedtls_ssl_update_in_pointers(ssl);
             return MBEDTLS_ERR_SSL_CONTINUE_PROCESSING;
         } else {
