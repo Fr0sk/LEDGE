@@ -43,7 +43,7 @@
 #include "scene/main/node.h"
 #include "scene/resources/texture.h"
 
-void PhysXBlastFractureMenuPlugin::get_options(const Vector<String> &p_paths) {
+void PhysXBlastFractureMenuPlugin::get_options(const Vector<String> &p_paths, const Variant &p_data) {
 	if (p_paths.size() != 1) {
 		return;
 	}

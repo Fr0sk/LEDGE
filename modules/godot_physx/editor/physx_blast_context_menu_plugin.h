@@ -53,7 +53,7 @@ class PhysXBlastFractureMenuPlugin : public EditorContextMenuPlugin {
 	void _on_filesystem_option(PackedStringArray p_paths);
 
 public:
-	void get_options(const Vector<String> &p_paths) override;
+	void get_options(const Vector<String> &p_paths, const Variant &p_data) override;
 
 	PhysXBlastFractureMenuPlugin(ContextMenuSlot p_target_slot, PhysXBlastFractureDialog *p_dialog);
 };
