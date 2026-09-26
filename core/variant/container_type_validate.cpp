@@ -113,3 +113,61 @@ bool ContainerTypeValidate::_internal_validate_object(const Variant &p_variant, 
 
 	return true;
 }
+
+///warning! don't try to fix this to 'copy on write'
+const Variant* ContainerTypeValidate::_validate_nested(const Variant* p_validated, Variant& r_tmp_variant, const char* p_operation, bool p_output_errors) const {
+	if (nested_types.is_empty()) {
+		return p_validated;
+	}
+
+	if (variant_type == Variant::ARRAY && p_validated->get_type() == Variant::ARRAY) {
+		Array arr = *p_validated;
+		const ContainerTypeValidate& elem_type = nested_types[0];
+		for (int i = 0; i < arr.size(); i++) {
+			Variant elem_tmp;
+			const Variant* elem = elem_type._validate_full(arr[i], elem_tmp, p_operation, p_output_errors);
+			if (elem == nullptr) {
+				return nullptr;
+			}
+			if (elem == &elem_tmp) {
+				arr[i] = *elem;
+			}
+		}
+		if (p_validated == &r_tmp_variant) {
+			r_tmp_variant = arr;
+		}
+		return p_validated;
+	}
+
+	if (variant_type == Variant::DICTIONARY && nested_types.size() >= 2 && p_validated->get_type() == Variant::DICTIONARY) {
+		Dictionary dict = *p_validated;
+		const ContainerTypeValidate& key_type = nested_types[0];
+		const ContainerTypeValidate& value_type = nested_types[1];
+		const Array keys = dict.keys();
+		for (int i = 0; i < keys.size(); i++) {
+			Variant old_key = keys[i];
+			Variant key_tmp;
+			Variant value_tmp;
+			const Variant* new_key = key_type._validate_full(old_key, key_tmp, p_operation, p_output_errors);
+			if (new_key == nullptr) {
+				return nullptr;
+			}
+			const Variant* new_value = value_type._validate_full(dict[old_key], value_tmp, p_operation, p_output_errors);
+			if (new_value == nullptr) {
+				return nullptr;
+			}
+			if (new_key == &key_tmp || new_value == &value_tmp) {
+				if (new_key == &key_tmp) {
+					dict.erase(old_key);
+				}
+				dict[*new_key] = *new_value;
+			}
+		}
+		if (p_validated == &r_tmp_variant) {
+			r_tmp_variant = dict;
+		}
+		return p_validated;
+	}
+
+	return p_validated;
+}
