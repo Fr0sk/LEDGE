@@ -51,7 +51,7 @@ static bool _gdscript_value_satisfies_trait(const Variant& p_value, const String
 		}
 
 		if (object->get_script_instance()) {
-			Script* script = object->get_script_instance()->get_script().ptr();
+			Script* script = object->get_script_instance()->get_script();
 			while (script != nullptr) {
 				GDScript* gdscript = Object::cast_to<GDScript>(script);
 				if (gdscript != nullptr && !gdscript->get_fully_qualified_name().is_empty()) {
