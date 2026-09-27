@@ -2362,6 +2362,9 @@ Error GDScriptCompiler::_emit_inline_call(CodeGen& codegen, const GDScriptParser
 	GDScriptOptimiser::SiblingSlotPool inline_pool;
 	inline_pool.inline_generation = GDScriptOptimiser::new_inline_generation();
 
+	GDScriptByteCodeGenerator* bytecode_gen = static_cast<GDScriptByteCodeGenerator*>(codegen.generator);
+	uint32_t locals_top_before_inline = bytecode_gen->get_locals_top();
+
 	const GDScriptParser::FunctionNode* saved_function_node = codegen.function_node;
 	codegen.function_node = p_target;
 
@@ -2408,6 +2411,9 @@ Error GDScriptCompiler::_emit_inline_call(CodeGen& codegen, const GDScriptParser
 	///splice gaming 2026
 	err = _parse_block(codegen, p_target->body, /*add_locals=*/true, /*clear_locals=*/true, &inline_pool);
 
+	///snapshot locals at peak, must do it here before end_block() shrinks em
+	uint32_t locals_top_peak_inline = bytecode_gen->get_locals_top();
+
 	codegen.function_node = saved_function_node;
 	codegen.inline_call_depth--;
 	codegen.inline_call_stack.resize(codegen.inline_call_stack.size() - 1);
@@ -2418,6 +2424,18 @@ Error GDScriptCompiler::_emit_inline_call(CodeGen& codegen, const GDScriptParser
 	}
 
 	codegen.end_block();
+
+	///sooo the stack frame just collapsed.
+	///everything in [locals_top_before_inline, locals_top_peak_inline) is now dead,
+	///so we can hand it to the outer sibling pool so the next sibling can reuse those slotsW
+	if (p_sibling_pool != nullptr) {
+		uint32_t freed_count = locals_top_peak_inline - locals_top_before_inline;
+		if (freed_count > 0) {
+			int freed_at_ip = gen->get_current_ip();
+			GDScriptOptimiser::register_freed_slot_range(*p_sibling_pool, locals_top_before_inline, freed_count, freed_at_ip);
+		}
+	}
+
 	gen->end_inline_call();
 #ifdef DEBUG_ENABLED
 	gen->end_inline_call_debug();
