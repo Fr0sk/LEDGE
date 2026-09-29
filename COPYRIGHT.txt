@@ -494,6 +494,11 @@ Comment: NVIDIA NVAPI (minimal excerpt)
 Copyright: 2019-2022, NVIDIA Corporation
 License: Expat
 
+Files: modules/godot_physx/*
+Comment: NVIDIA PhysX
+Copyright: 2019-2025, NVIDIA Corporation
+License: BSD-3-Clause
+
 Files: thirdparty/misc/ok_color.h
  thirdparty/misc/ok_color_shader.h
 Comment: OK Lab color space
