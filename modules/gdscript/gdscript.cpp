@@ -1048,22 +1048,24 @@ bool GDScript::_set(const StringName &p_name, const Variant &p_value) {
 		HashMap<StringName, MemberInfo>::ConstIterator E = top->static_variables_indices.find(p_name);
 		if (E) {
 			const MemberInfo *member = &E->value;
-			Variant value = p_value;
-			if (!member->data_type.is_type(value)) {
+			Variant tmp;
+			const Variant *value = &p_value;
+			if (!member->data_type.is_type(p_value)) {
 				const Variant *args = &p_value;
 				Callable::CallError err;
-				Variant::construct(member->data_type.builtin_type, value, &args, 1, err);
-				if (err.error != Callable::CallError::CALL_OK || !member->data_type.is_type(value)) {
+				Variant::construct(member->data_type.builtin_type, tmp, &args, 1, err);
+				if (err.error != Callable::CallError::CALL_OK || !member->data_type.is_type(tmp)) {
 					return false;
 				}
+				value = &tmp;
 			}
 			if (likely(top->valid) && member->setter) {
-				const Variant *args = &value;
+				const Variant *args = value;
 				Callable::CallError err;
 				callp(member->setter, &args, 1, err);
 				return err.error == Callable::CallError::CALL_OK;
 			} else {
-				top->static_variables.write[member->index] = value;
+				top->static_variables.write[member->index] = *value;
 				return true;
 			}
 		}
@@ -1565,22 +1567,24 @@ bool GDScriptInstance::set(const StringName &p_name, const Variant &p_value) {
 		HashMap<StringName, GDScript::MemberInfo>::Iterator E = script->member_indices.find(p_name);
 		if (E) {
 			const GDScript::MemberInfo *member = &E->value;
-			Variant value = p_value;
-			if (!member->data_type.is_type(value)) {
+			Variant tmp;
+			const Variant *value = &p_value;
+			if (!member->data_type.is_type(p_value)) {
 				const Variant *args = &p_value;
 				Callable::CallError err;
-				Variant::construct(member->data_type.builtin_type, value, &args, 1, err);
-				if (err.error != Callable::CallError::CALL_OK || !member->data_type.is_type(value)) {
+				Variant::construct(member->data_type.builtin_type, tmp, &args, 1, err);
+				if (err.error != Callable::CallError::CALL_OK || !member->data_type.is_type(tmp)) {
 					return false;
 				}
+				value = &tmp;
 			}
 			if (likely(script->valid) && member->setter) {
-				const Variant *args = &value;
+				const Variant *args = value;
 				Callable::CallError err;
 				callp(member->setter, &args, 1, err);
 				return err.error == Callable::CallError::CALL_OK;
 			} else {
-				members[member->index] = value;
+				members[member->index] = *value;
 				return true;
 			}
 		}
@@ -1592,22 +1596,24 @@ bool GDScriptInstance::set(const StringName &p_name, const Variant &p_value) {
 			HashMap<StringName, GDScript::MemberInfo>::ConstIterator E = sptr->static_variables_indices.find(p_name);
 			if (E) {
 				const GDScript::MemberInfo *member = &E->value;
-				Variant value = p_value;
-				if (!member->data_type.is_type(value)) {
+				Variant tmp;
+				const Variant *value = &p_value;
+				if (!member->data_type.is_type(p_value)) {
 					const Variant *args = &p_value;
 					Callable::CallError err;
-					Variant::construct(member->data_type.builtin_type, value, &args, 1, err);
-					if (err.error != Callable::CallError::CALL_OK || !member->data_type.is_type(value)) {
+					Variant::construct(member->data_type.builtin_type, tmp, &args, 1, err);
+					if (err.error != Callable::CallError::CALL_OK || !member->data_type.is_type(tmp)) {
 						return false;
 					}
+					value = &tmp;
 				}
 				if (likely(sptr->valid) && member->setter) {
-					const Variant *args = &value;
+					const Variant *args = value;
 					Callable::CallError err;
 					callp(member->setter, &args, 1, err);
 					return err.error == Callable::CallError::CALL_OK;
 				} else {
-					sptr->static_variables.write[member->index] = value;
+					sptr->static_variables.write[member->index] = *value;
 					return true;
 				}
 			}
@@ -2062,8 +2068,8 @@ String GDScriptInstance::to_string(bool *r_valid) {
 	return String();
 }
 
-Ref<Script> GDScriptInstance::get_script() const {
-	return script;
+Script *GDScriptInstance::get_script() const {
+	return *script;
 }
 
 ScriptLanguage *GDScriptInstance::get_language() {
@@ -2704,8 +2710,9 @@ void GDScriptLanguage::reload_scripts(const Array &p_scripts) {
 #endif // DEBUG_ENABLED
 }
 
-#ifdef DEBUG_ENABLED
+#ifdef TOOLS_ENABLED
 void GDScriptLanguage::_prepare_script_for_reload(const Ref<GDScript> &p_script, HashMap<ObjectID, List<Pair<StringName, Variant>>> &p_map) {
+	MutexLock lock(mutex);
 	while (p_script->instances.first()) {
 		GDScriptInstance *instance = p_script->instances.first()->self();
 		// Save instance info.
@@ -2716,8 +2723,6 @@ void GDScriptLanguage::_prepare_script_for_reload(const Ref<GDScript> &p_script,
 	}
 
 	// Same thing for placeholders.
-#ifdef TOOLS_ENABLED
-
 	while (p_script->placeholders.size()) {
 		Object *obj = (*p_script->placeholders.begin())->get_owner();
 
@@ -2732,8 +2737,6 @@ void GDScriptLanguage::_prepare_script_for_reload(const Ref<GDScript> &p_script,
 			p_script->placeholders.erase(*p_script->placeholders.begin());
 		}
 	}
-
-#endif // TOOLS_ENABLED
 
 	for (const KeyValue<ObjectID, List<Pair<StringName, Variant>>> &F : p_script->pending_reload_state) {
 		p_map[F.key] = F.value; // Pending to reload, use this one instead.
